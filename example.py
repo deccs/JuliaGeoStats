@@ -30,7 +30,7 @@ yrng = np.linspace(0,ny,num=ysteps)
 # <codecell>
 
 # path
-N = nx * ny
+N = xsteps * ysteps
 idx = np.arange( N )
 random.shuffle( idx )
 path = list()
@@ -43,23 +43,32 @@ path.sort()
 
 # <codecell>
 
-locations = np.array( clstr[['Xlocation','Ylocation']] )
-variable = np.array( clstr['Primary'] )
-norm, inv, param, mu, sd = to_norm( variable, 1000 )
-data = np.vstack((locations.T,norm)).T
-#@jit
 def sgs( data, bw, path, xsteps, ysteps ):
+    '''
+    Input:  (data)   <N,3> NumPy array of data
+            (bw)     bandwidth of the semivariogram
+            (path)   randomized path through region of interest
+            (xsteps) number of cells in the x dimension
+            (ysteps) number of cells in the y dimension
+    Output: (M)      <xsteps,ysteps> NumPy array of data
+                     representing the simulated distribution
+                     of the variable of interest 
+    '''
+    # create array for the output
     M = np.zeros((xsteps,ysteps))
-    # lags
+    # generate the lags for the semivariogram
     hs = np.arange(0,50,bw)
+    # for each cell in the grid..
     for step in path :
+        # grab the index, the cell address, and the physical location
         idx, cell, loc = step
-        # create the model
-        model = SphericalModel( data, hs, bw ).fit()
-        kv = krige( data, model, hs, bw, loc, 4 )
+        # perform the kriging
+        kv = krige( data, spherical, hs, bw, loc, 4 )
+        # add the kriging estimate to the output
         M[cell[0],cell[1]] = kv
+        # add the kriging estimate to a spatial location
         newdata = [ loc[0], loc[1], kv ]
-        # add kv to `data`
+        # add this new point to the data used for kriging
         data = np.vstack(( data, newdata ))
     return M
 
