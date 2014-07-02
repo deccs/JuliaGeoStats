@@ -115,7 +115,7 @@ def cvmodel( P, model, hs, bw ):
     # calculate the optimal parameters
     param = opt( model, sv[0], sv[1], C0 )
     # return a covariance function
-    covfct = lambda h, a=param: C0 - model( h, a, C0 )
+    covfct = lambda h, a=param: model( h, a, C0 )
     return covfct
 
 def krige( P, model, hs, bw, u, N ):
