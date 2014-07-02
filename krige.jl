@@ -81,6 +81,6 @@ function cvmodel( P, model, hs, bw )
     sv = SV( P, hs, bw )
     C0 = C( P, hs[1], bw )
     param = opt( model, sv[:,1], sv[:,2], C0 )
-    covfct = h -> C0 - model( h, param, C0 )
+    covfct = h -> model( h, param, C0 )
     return covfct
 end
