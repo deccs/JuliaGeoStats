@@ -154,7 +154,7 @@ def krige( P, model, hs, bw, u, N ):
     K = squareform( pdist( P[:,:2] ) )
     # apply the covariance model to these distances
     K = covfct( K.ravel() )
-    # re-cast as a NumPy array
+    # re-cast as a NumPy array -- thanks M.L.
     K = np.array( K )
     # reshape into an array
     K = K.reshape(N,N)
