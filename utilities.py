@@ -53,8 +53,8 @@ def read_data( fn ):
     # turn a list of list of strings into an array of floats
     data = np.array( data, dtype=np.float )
     # combine the data with the variable names into a DataFrame
-    df = pandas.DataFrame( data, columns=columns,  )
-    return df
+    # df = pandas.DataFrame( data, columns=columns,  )
+    return data
     
 def cdf( d, bins=12 ):
     '''
