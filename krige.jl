@@ -1,3 +1,5 @@
+#!/usr/bin/env julia
+
 using Distance
 
 function SVh( P, h, bw )
