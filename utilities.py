@@ -112,11 +112,10 @@ def to_norm( data, bins=12 ):
     z = scipy.stats.norm(0,1).ppf( f[:,1] )
     z = np.where( z==np.inf, np.nan, z )
     z = np.where( np.isnan( z ), np.nanmax( z ), z )
-    param = ( mu, sd )
-    return z, inv, param, mu, sd
+    return z, inv, mu, sd
 
 # transform data from normal dist back
-def from_norm( data, inv, param, mu, sd ):
+def from_norm( data, inv, mu, sd ):
     h = fit( inv )
     f = scipy.stats.norm(0,1).cdf( data )
     z = [ h(i)*sd + mu for i in f ]
@@ -135,4 +134,5 @@ cdict = {'red':   ((0.0, 1.0, 1.0),
                    (0.5, 198/255., 198/255. ),
                    (0.75, 1.0, 1.0 ),
                    (1.0, 0.0, 0.0)) }
+                   
 YPcmap = matplotlib.colors.LinearSegmentedColormap('my_colormap',cdict,256)
