@@ -41,6 +41,18 @@ def readGeoEAS( fn ):
     return data
     
 def cdf( d, bins=12 ):
+    N = float( len( d ) )
+    xs = np.sort( d )
+    xu = np.unique( xs )
+    U = len( U )
+    cdf = np.zeros(( U, ))
+    for i in range( U ):
+    	cdf[i] = len( xs[ xs < xu[i] ] ) / N
+    f = np.vstack((xu,cdf)).T
+    finv = np.fliplr(f)
+    return f, finv
+    
+def old_cdf( d, bins=12 ):
     '''
     Input:  (d)    iterable, a data set
             (bins) granularity of CDF
