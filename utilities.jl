@@ -1,6 +1,6 @@
 #!/usr/bin/env julia
 
-function read_data( fn )
+function readGeoEAS( fn )
     f = open( fn, "r" )
     title = readline( f )
     nvar = int( readline( f ) )
