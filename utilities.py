@@ -43,10 +43,11 @@ def readGeoEAS( fn ):
 def cdf( d ):
     '''
     Input:  (d)    iterable, a data set
-    Output: (f)    NumPy array with two columns, the first column
-                   are values from (d) the second column are CDF 
-                   values; alternatively, think of the columns 
-                   as the domain and range of the CDF function
+    Output: (f)    NumPy array with (bins) rows and two columns
+                   the first column are values in the range of (d)
+                   the second column are CDF values
+                   alternatively, think of the columns as the
+                   domain and range of the CDF function
             (finv) inverse of (f)
     ---------------------------------------------------------
     Calculate the cumulative distribution function
@@ -61,7 +62,7 @@ def cdf( d ):
     # number of unique data points
     U = len( xu )
     # initialize an array of U zeros
-    cdf = np.zeros(( U, ))
+    cdf = np.zeros((U))
     # for each unique data point..
     for i in range( U ):
         # count the number of points less than
@@ -94,22 +95,58 @@ def fit( d ):
             return intr(t)
     return f
     
-# transform data to normal dist
-def to_norm( data ):
-    mu = np.mean( data )
-    sd = np.std( data )
-    z = ( data - mu ) / sd
+def to_norm( z ):
+    '''
+    Input  (z)   1D NumPy array of observational data
+    Output (z)   1D NumPy array of z-score transformed data
+           (inv) inverse mapping to retrieve original distribution
+    '''
+    N = len( z )
+    # grab the cumulative distribution function
     f, inv = cdf( z )
-    z = scipy.stats.norm(0,1).ppf( f[:,1] )
-    z = np.where( z==np.inf, np.nan, z )
+    # h will return the cdf of z
+    # by interpolating the mapping f
+    h = fit( f )
+    # ppf will return the inverse cdf
+    # of the standard normal distribution
+    ppf = scipy.stats.norm(0,1).ppf
+    # for each data point..
+    for i in range( N ):
+        # h takes z to a value in [0,1]
+        p = h( z[i] )
+        # ppf takes p (in [0,1]) to a z-score
+        z[i] = ppf( p )
+    # convert positive infinite values
+    posinf = np.isposinf( z )
+    z = np.where( posinf, np.nan, z )
     z = np.where( np.isnan( z ), np.nanmax( z ), z )
-    return z, inv, mu, sd
+    # convert negative infinite values
+    neginf = np.isneginf( z )
+    z = np.where( neginf, np.nan, z )
+    z = np.where( np.isnan( z ), np.nanmin( z ), z )
+    return z, inv
 
-# transform data from normal dist back
-def from_norm( data, inv, mu, sd ):
+def from_norm( data, inv ):
+    '''
+    Input:  (data) NumPy array of zscore data
+            (inv)  mapping that takes zscore data back
+                   to the original distribution
+    Output: (z)    Data that should conform to the 
+                   distribution of the original data
+    '''
+    # convert to a column vector
+    d = data.ravel()
+    # create an interpolating function 
+    # for the inverse cdf, mapping zscores
+    # back to the original data distribution
     h = fit( inv )
-    f = scipy.stats.norm(0,1).cdf( data )
-    z = [ h(i)*sd + mu for i in f ]
+    # convert z-score data to cdf values in [0,1]
+    f = scipy.stats.norm(0,1).cdf( d )
+    # use inverse cdf to map [0,1] values to the
+    # original distribution, then add the mu and sd
+    z = np.array( [ h(i) for i in f ] )
+    # reshape the data
+    z = np.reshape( z, data.shape )
     return z
 
 # this is a colormap that ranges from yellow to purple to black
