@@ -112,12 +112,22 @@ def fit( d ):
             return intr(t)
     return f
     
-def to_norm( z ):
+def to_norm( data ):
     '''
-    Input  (z)   1D NumPy array of observational data
-    Output (z)   1D NumPy array of z-score transformed data
-           (inv) inverse mapping to retrieve original distribution
+    Input  (data) 1D NumPy array of observational data
+    Output (z)    1D NumPy array of z-score transformed data
+           (inv)  inverse mapping to retrieve original distribution
     '''
+    # look at the dimensions of the data
+    dims = data.shape
+    # if there is more than one dimension..
+    if len( dims ) > 1:
+        # take the third column of the second dimension
+        z = data[:,2]
+    # otherwise just use data as is
+    else:
+        z = data
+    # grab the number of data points
     N = len( z )
     # grab the cumulative distribution function
     f, inv = cdf( z )
@@ -141,6 +151,10 @@ def to_norm( z ):
     neginf = np.isneginf( z )
     z = np.where( neginf, np.nan, z )
     z = np.where( np.isnan( z ), np.nanmin( z ), z )
+    # if the whole data set was passed, then add the
+    # transformed variable and recombine with data
+    if len( dims ) > 1:
+        z = np.vstack(( data[:,:2].T, z )).T
     return z, inv
 
 def from_norm( data, inv ):
