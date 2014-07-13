@@ -5,27 +5,40 @@ import krige as k
 import random
 
 def gridpath( xdim, ydim ):
-	'''
-	Input:  (xdim) iterable describing the start, stop, and no. steps
-	        (ydim) iterable describing the start, stop, and no. steps
-	Output: (path) path through the 2D grid, a list of lists
-	               each element has an index, an address in the gird,
-	               and an address in space
-	'''
-	# dim = ( start, stop, steps )
-	xrng = np.linspace( *xdim )
-	yrng = np.linspace( *ydim )
-	N = xdim[2] * ydim[2]
-	idx = np.arange( N )
-	random.shuffle( idx )
-	path = list()
-	t = 0
-	for i in range( xdim[2] ):
-		for j in range( ydim[2] ):
-			path.append( [ idx[t], (i,j), (xrng[i],yrng[j]) ] )
-			t += 1
-	path.sort()
-	return path
+    '''
+    Input:  (xdim) iterable describing the start, stop, and no. steps
+            (ydim) iterable describing the start, stop, and no. steps
+    Output: (path) path through the 2D grid, a list of lists
+                   each element has an index, an address in the gird,
+                   and an address in space
+    '''
+    # dim = ( start, stop, steps )
+    xrng = np.linspace( *xdim )
+    yrng = np.linspace( *ydim )
+    # total number of steps in the random path
+    N = xdim[2] * ydim[2]
+    # an array of indices
+    idx = np.arange( N )
+    # shuffle the indices
+    random.shuffle( idx )
+    # create a list for the path
+    path = list()
+    # create a counter
+    t = 0
+    # for each cell in the x dimension
+    for i in range( xdim[2] ):
+    	# for each cell in the y dimension
+        for j in range( ydim[2] ):
+            # record a shuffled index value, idx[t],
+            # an integer cell address (i,j), and a
+            # physical address in feet, ( xrng[i], yrng[j] )
+            path.append( [ idx[t], (i,j), (xrng[i],yrng[j]) ] )
+            # increment t for the shuffled indices, idx
+	    t += 1
+    # sort the shuffled indices
+    # thereby shuffling the path
+    path.sort()
+    return path
 
 def sgs( data, model, hs, bw, xs, ys=None, pad=0.0 ):
     '''
