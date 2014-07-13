@@ -136,7 +136,7 @@ function krige( P, model, hs, bw, u, N )
     return estimation
 end
 
-P = read_data("/media/connor/KINGSTON/GSLIBPy/gslib90sc/cluster.dat")
+P = readGeoEAS("/media/connor/KINGSTON/GSLIBPy/gslib90sc/cluster.dat")
 hs = linspace( 10, 50, 5 )
 bw = 10.0
 u = [ 25.0, 25.0 ]
