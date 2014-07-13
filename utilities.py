@@ -84,12 +84,29 @@ def cdf( d ):
     
    
 def fit( d ):
+    '''
+    Input:  (d) NumPy array with two columns,
+                a domain and range of a mapping
+    Output: (f) function that interpolates the mapping d
+    ----------------------------------------------------
+    This takes a mapping and returns a function that
+    interpolates values that are missing in the original
+    mapping, and maps values outside the range* of the
+    domain (d) to the maximum or minimum values of the
+    range** of (d), respectively.
+    ----------------------------------------------------
+    *range - here, I mean "maximum minus minimum"
+    **range - here I mean the output of a mapping
+    '''
     x, y = d[:,0], d[:,1]
     def f(t):
+        # return the minimum of the range
         if t <= x.min():
             return y[ np.argmin(x) ]
+        # return the maximum of the range
         elif t >= x.max():
             return y[ np.argmax(x) ]
+        # otherwise, interpolate linearly
         else:
             intr = scipy.interpolate.interp1d( x, y )
             return intr(t)
