@@ -59,7 +59,7 @@ def cdf( d ):
     # array of unique data points
     xu = np.unique( xs )
     # number of unique data points
-    U = len( U )
+    U = len( xu )
     # initialize an array of U zeros
     cdf = np.zeros(( U, ))
     # for each unique data point..
