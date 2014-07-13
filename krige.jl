@@ -1,176 +1,144 @@
-#!/usr/bin/env python
+#!/usr/bin/env julia
 
-import numpy as np
-from pandas import DataFrame, Series
-from scipy.spatial.distance import pdist, squareform
-#from numba import jit
+using Distance
 
-def SVh( P, h, bw ):
-    '''
-    Experimental semivariogram for a single lag
-    '''
-    pd = squareform( pdist( P[:,:2] ) )
-    N = pd.shape[0]
-    Z = list()
-    for i in range(N):
-        for j in range(i+1,N):
-            if( pd[i,j] >= h-bw )and( pd[i,j] <= h+bw ):
-                Z.append( ( P[i,2] - P[j,2] )**2.0 )
-    return np.sum( Z ) / ( 2.0 * len( Z ) )
- 
-def SV( P, hs, bw ):
-    '''
-    Experimental variogram for a collection of lags
-    '''
-    sv = list()
-    for h in hs:
-        sv.append( SVh( P, h, bw ) )
-    sv = [ [ hs[i], sv[i] ] for i in range( len( hs ) ) if sv[i] > 0 ]
-    return np.array( sv ).T
- 
-def C( P, h, bw ):
-    '''
-    Calculate the sill
-    '''
-    c0 = np.var( P[:,2] )
-    if h == 0:
+include("utilities.jl")
+
+function SVh( P, h, bw )
+    # calculate the pairwise distances
+    pd = pairwise( Euclidean(), P[:,1:2]' )
+    # get the dimensions of P
+    rows, cols = size( P )
+    # create an array for the distances
+    Z = Float64[]
+    # for each pair of data..
+    for i in 1:rows
+        for j in i+1:rows
+            if( pd[i,j] >= h-bw )&&( pd[i,j] <= h+bw )
+                # if the two points are within the right 
+                # distance of each other, push the squared 
+                # difference of the variable into Z
+                push!( Z, ( P[i,3] - P[j,3] )^2.0 )
+            end
+        end
+    end
+    # return half of the average squared deviation
+    return sum( Z ) / ( 2.0 * length( Z ) )
+end
+
+function SV( P, hs, bw )
+    sv = Float64[]
+    hx = Float64[]
+    # for an array of distances, h out of hs..
+    for h in hs
+        # calculate the semivariogram at a specific distance h
+        s = SVh( P, h, bw )
+        # if the value of the semivariogram is not NaN
+        if s > 0
+            # push the semivariogram value into sv
+            push!( sv, s )
+            # push the distance h into hx
+            push!( hx, h )
+        end
+    end
+    # concatenate hx and sv
+    sv = hcat( hx, sv )
+    return sv
+end
+
+function C( P, h, bw )
+    c0 = var( P[:,3] )
+    if h == 0
         return c0
+    end
     return c0 - SVh( P, h, bw )
+end
 
-def opt( fct, x, y, C0, parameterRange=None, meshSize=1000 ):
-    '''
-    Optimize parameters for a model of the semivariogram
-    '''
-    if parameterRange == None:
-        parameterRange = [ x[1], x[-1] ]
-    mse = np.zeros( meshSize )
-    a = np.linspace( parameterRange[0], parameterRange[1], meshSize )
-    for i in range( meshSize ):
-        mse[i] = np.mean( ( y - fct( x, a[i], C0 ) )**2.0 )
-    return a[ mse.argmin() ]
-    
-def spherical( h, a, C0 ):
-    '''
-    Spherical model of the semivariogram
-    '''
-    # if h is a single digit
-    if type(h) == np.float64:
-        # calculate the spherical function
-        if h <= a:
-            return C0*( 1.5*h/a - 0.5*(h/a)**3.0 )
-        else:
+function opt( fct, x, y, C0, parameterRange=None, meshSize=1000 )
+    if parameterRange == None
+        parameterRange = ( x[2], x[end] )
+    end
+    mse = zeros( meshSize )
+    a = linspace( parameterRange[1], parameterRange[2], meshSize )
+    @parallel for i in 1:meshSize
+        mse[i] = mean( ( y - fct( x, a[i], C0 ) ).^2.0 )
+    end
+    # indmin() == argmin()
+    return a[ indmin( mse ) ]
+end
+
+@everywhere function spherical( h, a, C0 )
+    if typeof( h ) == Float64
+        if h <= a
+            return C0*( 1.5*h/a - 0.5*(h/a)^3.0 )
+        else
             return C0
-    # if h is an iterable
-    else:
-        # calcualte the spherical function for all elements
-        a = np.ones( h.size ) * a
-        C0 = np.ones( h.size ) * C0
+        end
+    else
+        a = ones( length( h ) ) * a
+        C0 = ones( length( h ) ) * C0
         return map( spherical, h, a, C0 )
-    
-def exponential( h, a, C0 ):
-    '''
-    Exponential model of the semivariogram
-    '''
-    # if h is a single digit
-    if type(h) == np.float64:
-        # calculate the exponential function
-        return C0*( 1.0 - np.exp( -3.0 * h / a ) )
-    # if h is an iterable
-    else:
-        # calcualte the exponential function for all elements
-        a = np.ones( h.size ) * a
-        C0 = np.ones( h.size ) * C0
-        return map( exponential, h, a, C0 )
-        
-def gaussian( h, a, C0 ):
-    '''
-    Gaussian model of the semivariogram
-    '''
-    # if h is a single digit
-    if type(h) == np.float64:
-        # calculate the Gaussian function
-        return C0*( 1.0 - np.exp( -3.0 * h**2.0 / a**2.0 ) )
-    # if h is an iterable
-    else:
-        # calcualte the Gaussian function for all elements
-        a = np.ones( h.size ) * a
-        C0 = np.ones( h.size ) * C0
-        return map( gaussian, h, a, C0 )
-         
-def cvmodel( P, model, hs, bw ):
-    '''
-    Input:  (P)      ndarray, data
-            (model)  modeling function
-                      - spherical
-                      - exponential
-                      - gaussian
-            (hs)     distances
-            (bw)     bandwidth
-    Output: (covfct) function modeling the covariance
-    '''
-    # calculate the semivariogram
+    end
+end
+
+function cvmodel( P, model, hs, bw )
     sv = SV( P, hs, bw )
-    # calculate the sill
-    C0 = C( P, hs[0], bw )
-    # calculate the optimal parameters
-    param = opt( model, sv[0], sv[1], C0 )
-    # return a covariance function
-    covfct = lambda h, a=param: C0 - model( h, a, C0 )
+    C0 = C( P, hs[1], bw )
+    param = opt( model, sv[:,1], sv[:,2], C0 )
+    covfct = h -> C0 - model( h, param, C0 )
     return covfct
+end
 
-def krige( P, model, hs, bw, u, N ):
-    '''
-    Input  (P)     ndarray, data
-           (model) modeling function
-                    - spherical
-                    - exponential
-                    - gaussian
-           (hs)    kriging distances
-           (bw)    kriging bandwidth
-           (u)     unsampled point
-           (N)     number of neighboring 
-                   points to consider
-    '''
+function krige( P, model, hs, bw, u, N )
 
-    # covariance function
-    covfct = cvmodel( P, model, hs, bw )
     # mean of the variable
-    mu = np.mean( P[:,2] )
+    covfct = cvmodel( P, model, hs, bw )
 
+    # mean of the variable
+    mu = mean( P[:,3] )
+    
     # distance between u and each data point in P
-    d = np.sqrt( ( P[:,0]-u[0] )**2.0 + ( P[:,1]-u[1] )**2.0 )
+    d = sqrt( ( P[:,1]-u[1] ).^2.0 + ( P[:,2]-u[2] ).^2.0 )
+    d = reshape( d, size( P, 1 ), 1 )
+    
     # add these distances to P
-    P = np.vstack(( P.T, d )).T
+    P = hcat( P, d )
+    
     # sort P by these distances
     # take the first N of them
-    P = P[d.argsort()[:N]]
+    d = reshape( d, size(P,1) )
+    s = sortperm( d )
+    P = P[ s[1:N], 1:size(P,2) ]
 
     # apply the covariance model to the distances
-    k = covfct( P[:,3] )
-    # cast as a matrix
-    k = np.matrix( k ).T
-
-    # form a matrix of distances between existing data points
-    K = squareform( pdist( P[:,:2] ) )
-    # apply the covariance model to these distances
-    K = covfct( K.ravel() )
+    k = covfct( P[:,4] )
+    println( k )
     
-    # re-cast as NumPy 
-    K = np.array( K )
+    # form a matrix of distances between existing data points
+    K = pairwise( Euclidean(), P[:,1:2]' )
+    # apply the covariance model to these distances
+    N, N = size( K )
+    K = reshape( K, N*N )
+    K = covfct( K )
     
     # reshape into an array
-    K = K.reshape(N,N)
-    # cast as a matrix
-    K = np.matrix( K )
+    K = reshape( K, N, N )
 
     # calculate the kriging weights
-    weights = np.linalg.inv( K ) * k
-    weights = np.array( weights )
+    weights = inv( K ) * k
 
     # calculate the residuals
-    residuals = P[:,2] - mu
+    residuals = P[:,3] - mu
 
     # calculate the estimation
-    estimation = np.dot( weights.T, residuals ) + mu
+    estimation = weights' * residuals + mu
     
-    return float( estimation )
+    return estimation
+end
+
+P = read_data("/media/connor/KINGSTON/GSLIBPy/gslib90sc/cluster.dat")
+hs = linspace( 10, 50, 5 )
+bw = 10.0
+u = [ 25.0, 25.0 ]
+k = krige( P[:,1:3], spherical, hs, bw, u, 4 )
+println( k )
