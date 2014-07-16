@@ -133,5 +133,5 @@ function krige( P, model, hs, bw, u, N )
     # calculate the estimation
     estimation = weights' * residuals + mu
     
-    return estimation
+    return estimation[1]
 end
