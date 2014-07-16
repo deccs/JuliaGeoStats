@@ -1,5 +1,8 @@
 #!/usr/bin/env julia
 
+include("utilities.jl")
+include("krige.jl")
+
 P = readGeoEAS("cluster.dat")
 
 P = P[:,1:3]
