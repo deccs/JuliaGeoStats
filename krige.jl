@@ -91,7 +91,7 @@ end
 
 function krige( P, model, hs, bw, u, N )
 
-    # mean of the variable
+    # calculate the covariance function
     covfct = cvmodel( P, model, hs, bw )
 
     # mean of the variable
