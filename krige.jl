@@ -135,3 +135,46 @@ function krige( P, model, hs, bw, u, N )
     
     return estimation[1]
 end
+
+function static_krige( P, covfct, u, N )
+
+    # mean of the variable
+    mu = mean( P[:,3] )
+
+    # distance between u and each data point in P
+    d = sqrt( ( P[:,1]-u[1] ).^2.0 + ( P[:,2]-u[2] ).^2.0 )
+    d = reshape( d, size( P, 1 ), 1 )
+
+    # add these distances to P
+    P = hcat( P, d )
+
+    # sort P by these distances
+    # take the first N of them
+    d = reshape( d, size(P,1) )
+    s = sortperm( d )
+    P = P[ s[1:N], 1:size(P,2) ]
+
+    # apply the covariance model to the distances
+    k = covfct( P[:,4] )
+
+    # form a matrix of distances between existing data points
+    K = pairwise( Euclidean(), P[:,1:2]' )
+    # apply the covariance model to these distances
+    N, N = size( K )
+    K = reshape( K, N*N )
+    K = covfct( K )
+
+    # reshape into an array
+    K = reshape( K, N, N )
+
+    # calculate the kriging weights
+    weights = inv( K ) * k
+
+    # calculate the residuals
+    residuals = P[:,3] - mu
+
+    # calculate the estimation
+    estimation = weights' * residuals + mu
+
+    return estimation[1]
+end
