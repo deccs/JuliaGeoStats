@@ -1,4 +1,4 @@
-geostatistics
+JuliaGeoStats
 =============
 
 I am implementing ideas from Clayton V. Deutsch's book Geostatistical Reservoir Modeling in order to better understand geostatistics.
